@@ -39,6 +39,9 @@ approvals *list_approvals;
 int no_approvals;
 int crt_approval_no;
 
+int no_operations_per_token = 0;
+
+
 static void
 chekprog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 {
@@ -219,8 +222,8 @@ void read_approvals(char *filename_approvals) {
 		no_approvals++;
 	}
 
+	/*
 	printf("%d\n", no_approvals);
-
 	for (int i = 0; i < no_approvals; i++) {
 
 		printf("Al %d-lea set de permisiuni:\n", i);
@@ -232,6 +235,7 @@ void read_approvals(char *filename_approvals) {
 	}
 
 	fclose(fp);	
+	*/
 }
 
 
@@ -250,6 +254,10 @@ main (int argc, char **argv)
 	}
 
 	read_input(argv[1], argv[2], argv[3]);
+	no_operations_per_token = atoi(argv[4]);
+
+	printf("%d\n", no_operations_per_token);
+
 
 	register SVCXPRT *transp;
 
