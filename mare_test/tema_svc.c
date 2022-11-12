@@ -34,6 +34,10 @@ int no_users_known;
 user_db *user_database;
 // authz tokens with associated permissions
 authz_token_permissions *authz_token_permissions_list;
+// approvals
+approvals *list_approvals;
+int no_approvals;
+int crt_approval_no;
 
 static void
 chekprog_1(struct svc_req *rqstp, register SVCXPRT *transp)
@@ -159,9 +163,82 @@ void read_resources(char *filename_resources) {
 	fclose(fp);	
 }
 
+void read_approvals(char *filename_approvals) {
+	FILE *fp = fopen(filename_approvals, "r");
+	if (fp == NULL) {
+		printf("Cannot open %s\n", filename_approvals);
+		exit(1);
+	}
+	const char delimiter[2] = ",";
+	char *resource;
+	char *permissions;
+	int crt_it = 0;
+
+	no_approvals = 0;
+
+
+	list_approvals = (approvals *) calloc((no_approvals + 1), sizeof(approvals));
+
+
+	while (fgets(buf, BUFSIZE, fp)) {
+		list_approvals = (approvals *) realloc(list_approvals, (no_approvals + 1) * sizeof(approvals));
+		//printf("%s", buf);
+
+
+		resource = strtok(buf, delimiter);
+		permissions = strtok(NULL, delimiter);
+
+		crt_it = 0;
+
+		while(resource != NULL) {
+			list_approvals[no_approvals].list_permissions_val = (resource_permissions *) realloc(list_approvals[no_approvals].list_permissions_val, (crt_it + 1) * sizeof(resource_permissions));
+
+			list_approvals[no_approvals].list_permissions_val[crt_it].resource = (char *) calloc(strlen(resource) + 1, sizeof(char));	
+			if (!list_approvals[no_approvals].list_permissions_val[crt_it].resource) {
+				printf("failed allocating resource name in approval\n");
+				exit(1);
+			}
+			
+			memcpy(list_approvals[no_approvals].list_permissions_val[crt_it].resource, resource, strlen(resource));
+			
+			list_approvals[no_approvals].list_permissions_val[crt_it].permissions = (char *) calloc(strlen(permissions) + 1, sizeof(char));
+			if (!list_approvals[no_approvals].list_permissions_val[crt_it].permissions) {
+				printf("failed allocating permissions in approval\n");
+				exit(1);
+			}
+						
+			memcpy(list_approvals[no_approvals].list_permissions_val[crt_it].permissions, permissions, strlen(permissions));
+			crt_it++;
+
+			resource = strtok(NULL, delimiter);
+			permissions = strtok(NULL, delimiter);
+		}
+
+		list_approvals[no_approvals].no_resources_w_permissions = crt_it;
+
+		no_approvals++;
+	}
+
+	printf("%d\n", no_approvals);
+
+	for (int i = 0; i < no_approvals; i++) {
+
+		printf("Al %d-lea set de permisiuni:\n", i);
+
+		for (int j = 0; j < list_approvals[i].no_resources_w_permissions; j++) {
+			printf("resource: %s, permissions: %s\n", list_approvals[i].list_permissions_val[j].resource, list_approvals[i].list_permissions_val[j].permissions);
+		}
+
+	}
+
+	fclose(fp);	
+}
+
+
 void read_input(char *filename_clients, char *filename_resources, char *filename_approvals) {
 	read_known_users(filename_clients);
 	read_resources(filename_resources);
+	read_approvals(filename_approvals);
 }
 
 int

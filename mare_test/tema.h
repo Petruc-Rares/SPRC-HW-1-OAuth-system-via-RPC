@@ -83,6 +83,10 @@ typedef struct authz_token_permissions {
 	resource_permissions *list_permissions_val;
 } authz_token_permissions;
 
+typedef struct approvals {
+	resource_permissions *list_permissions_val;
+	int no_resources_w_permissions;
+} approvals;
 
 #define CHEKPROG 0x31234567
 #define CHECKVERS 1
