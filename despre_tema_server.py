@@ -35,7 +35,6 @@ def request_authorization(user_id, auto_refresh):
         return "USER_NOT_FOUND"
 
     authz_token = func(user_id)
-    print("  RequestToken = <authz_token>")
 
     # return authorization token
     return authz_token
@@ -57,6 +56,9 @@ def approve_request_token(authz_token):
 def request_access_token(user_id, authz_token, auto_refresh):
     if authz_token.signed == False:
         return None, None, None
+
+    # this might not be printed if refresh_token is used so you'll where you'll better write it
+    print("  RequestToken = <authz_token>")
 
     # valid token    
     access_token  = func(authz_token)
