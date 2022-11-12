@@ -41,7 +41,6 @@ int crt_approval_no;
 
 int no_operations_per_token = 0;
 
-
 static void
 chekprog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 {
@@ -103,7 +102,6 @@ chekprog_1(struct svc_req *rqstp, register SVCXPRT *transp)
 	}
 	return;
 }
-
 
 void read_known_users(char *filename_clients) {
 	FILE *fp = fopen(filename_clients, "r");
@@ -245,6 +243,7 @@ void read_input(char *filename_clients, char *filename_resources, char *filename
 	read_approvals(filename_approvals);
 }
 
+
 int
 main (int argc, char **argv)
 {
@@ -257,7 +256,6 @@ main (int argc, char **argv)
 	no_operations_per_token = atoi(argv[4]);
 
 	printf("%d\n", no_operations_per_token);
-
 
 	register SVCXPRT *transp;
 

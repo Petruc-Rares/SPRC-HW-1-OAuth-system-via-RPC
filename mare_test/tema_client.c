@@ -11,15 +11,22 @@
 // used for reading data into it
 char buf[BUFSIZE];
 
-
-
 request_access_token_response execute_request_client(char *user_id, int auto_refresh, CLIENT* clnt) {
+	request_access_token_response response;
 	request_authorization_param param;
 	
 	param.user_id = user_id;
 	param.auto_refresh = auto_refresh;
 
 	token *authz_token = request_authorization_1(&param, clnt);
+
+
+	if (authz_token->no_available_operations == -1) {
+		printf("USER_NOT_FOUND\n");
+		return response;
+	} else {
+		printf("%s -> \n",authz_token->token_value);
+	}
 }
 
 void execute_operation_client(char *host, char *filename_operations) {
@@ -92,6 +99,7 @@ void execute_operation_client(char *host, char *filename_operations) {
 	#endif	 /* DEBUG */
 }
 
+
 int
 main (int argc, char *argv[])
 {
@@ -102,8 +110,7 @@ main (int argc, char *argv[])
 		exit (1);
 	}
 
-	execute_operation_client(host, argv[2]);
-
 	host = argv[1];
+	execute_operation_client(host, argv[2]);
 exit (0);
 }

@@ -13,6 +13,7 @@
 extern "C" {
 #endif
 
+
 struct token {
 	char *token_value;
 	int no_available_operations;
@@ -35,13 +36,13 @@ struct approve_request_token_response {
 typedef struct approve_request_token_response approve_request_token_response;
 
 struct request_authorization_param {
-	int user_id;
+	char *user_id;
 	int auto_refresh;
 };
 typedef struct request_authorization_param request_authorization_param;
 
 struct request_access_token_param {
-	int user_id;
+	char *user_id;
 	token authz_token;
 	token auto_refresh;
 };
@@ -55,7 +56,7 @@ struct request_access_token_response {
 typedef struct request_access_token_response request_access_token_response;
 
 struct validate_delegated_action_param {
-	int user_id;
+	char *user_id;
 	char *action;
 	char *resource;
 	token access_token;

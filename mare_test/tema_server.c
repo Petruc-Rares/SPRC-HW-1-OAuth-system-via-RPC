@@ -5,6 +5,7 @@
  */
 
 #include "tema.h"
+#include "token.h"
 
 extern char **resources_db;
 extern int no_resources;
@@ -21,12 +22,38 @@ request_authorization_1_svc(request_authorization_param *argp, struct svc_req *r
 {
 	static token  result;
 
-
-	printf("%s", resources_db[0]);
 	/*
 	 * insert server code here
 	 */
+	char *user_id = argp->user_id;
+	int auto_refresh = argp->auto_refresh;
 
+	if (auto_refresh) {
+		printf("Begin %s AUTHZ REFRESH\n", user_id);
+	} else {
+		printf("Begin %s AUTHZ\n", user_id);
+	}
+
+	int user_found = 0;
+	
+
+	// check if user_id is one of the known users
+	for (int i = 0; i < no_users_known; i++) {
+		if (strncmp(users_known[i], user_id, strlen(users_known[i])) == 0) {
+			user_found = 1;
+		}
+	}
+
+	if (user_found == 0) {
+		
+		// create impossible values for token and # operations
+		result.token_value = "USER_NOT_FOUND";
+		result.no_available_operations = -1;
+	} else {
+		result.token_value = generate_access_token(user_id);
+		result.no_available_operations = 0;
+	}
+	
 	return &result;
 }
 
