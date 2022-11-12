@@ -1,6 +1,9 @@
 # CLIENT:
 
-def request_authorization(user_id):
+# users is a list of structs: [{'user_id': 'user_id_value', 'access_token': 'access_token_value', 'refresh_token': 'refresh_token_value', 'perms': 'perms_value'}]
+
+
+def request_authorization(user_id, auto_refresh):
     # this function is useful to call server and return result
     authz_token = result_rpc_call
 
@@ -32,8 +35,8 @@ def request_access_token(user_id, authz_token, option):
 
 
 # just on client
-def execute_request_client():
-    authz_token = request_authorization(user_id)
+def execute_request_client(user_id, auto_refresh):
+    authz_token = request_authorization(user_id, 0)
 
     if authz_token = None:
         return None, None, None
@@ -44,19 +47,44 @@ def execute_request_client():
 
     # token approved by user
     # now ask for access token
-    return request_access_token(user_id, authz_token, option)
+    return request_access_token(user_id, authz_token, auto_refresh)
 
-# just on client
-def execute_rimdx_client():
-    # TODO: check smth like if refresh_token is not None and availability for the token
-    # is 0 => execute_request_client()
+def execute_rimdx_client(user_id, action, resource, access_token):
+    new_authz_token, new_access_token, new_refresh_token, availability_period, response = response_rpc
+
+    user_to_retrieve = [user for user in users if user['user_id'] == user_id][0]
+
+    user_to_retrieve['access_token'].availability_period--
+
+    refresh_token = [user for user in users if user['user_id'] == user_id][0]['refresh_token']
+
+    if refresh_token != None:
+        user_to_retrieve['authz_token'] = new_authz_token
+        user_to_retrieve['access_token'] = new_access_token
+        user_to_retrieve['refresh_token'] = new_refresh_token
+        print("<new_authz_token> -> <new_access_token>")
+
+    print(response)
+
+
 
 def execute_operation_client(user_id, operation, option):
 
     if operation == "REQUEST":
-        access_token, refresh_token, availability_period = execute_request_client()
+        access_token, refresh_token, availability_period = execute_request_client(user_id, option)
+    
+        users.append({
+            'user_id': user_id,
+            'access_token':access_token,
+            'refresh_token': refresh_token,
+            'availability_period': availability_period
+        })
+
     elif operation IN ("Read", "Insert", "Modify", "Delete", "Execute"):
-        execute_rimdx_client()
+        access_token = [user for user in users if user['user_id'] == user_id][0]['access_token']
+        
+        execute_rimdx_client(user_id, operation, option, access_token)
+
     else:
         pass
 

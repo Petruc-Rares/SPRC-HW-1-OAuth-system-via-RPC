@@ -12,12 +12,12 @@ users=[]
 authz_permissions=[]
 
 
-# token is struct: ['token': 'token_value', 'availability_period': 'availability_period_value']
+# token is struct: ['token': 'token_value', 'availability_period': 'availability_period_value', 'signed': 'signed_value']
 # resources is array of strings: ['Files', 'UserData', 'SystemData', ...]
-# permissions_resources is array of struct: [{'resource': 'resource_value', 'permission_resource': 'permission_resource_value'}]
+# permissions_resources is array of struct: [{'resource': 'resource_value', 'permissions': 'permissions_value'}]
 # user_ids_file is array of strings: ['user_id_1', ...]
 # auth_permissions is array of structs: [{'authz_token': 'authz_token_value', 'permissions:' 'permissions'}]
-
+# users is a list of structs: [{'user_id': 'user_id_value', 'access_token': 'access_token_value', 'refresh_token': 'refresh_token_value', 'perms': 'perms_value'}]
 
 def func(x):
     pass
@@ -25,14 +25,20 @@ def func(x):
 def operation_execute(id_ut, operation, option):
     pass
 
-def request_authorization(user_id):
-    print("Begin <user_id> AUTHZ")
+def request_authorization(user_id, auto_refresh):
+    if auto_refresh:
+        print("Begin <user_id> AUTHZ REFRESH")
+    else:
+        print("Begin <user_id> AUTHZ")
 
     if user_id not in user_ids_file:
         return "USER_NOT_FOUND"
 
+    authz_token = func(user_id)
+    print("  RequestToken = <authz_token>")
+
     # return authorization token
-    return func(user_id)
+    return authz_token
 
 def approve_request_token(authz_token):
     set_permissions = permissions_resources.next_row()
@@ -48,8 +54,7 @@ def approve_request_token(authz_token):
 
     return authz_token, set_permissions
 
-def request_access_token(user_id, authz_token, option):
-    print("  RequestToken = <authz_token>")
+def request_access_token(user_id, authz_token, auto_refresh):
     if authz_token.signed == False:
         return None, None, None
 
@@ -59,7 +64,7 @@ def request_access_token(user_id, authz_token, option):
 
     refresh_token = None
 
-    if option == 1:
+    if auto_refresh == 1:
         refresh_token = func(refresh_token)
 
     print("  AccessToken= <access_token>")
@@ -71,8 +76,53 @@ def request_access_token(user_id, authz_token, option):
         'user_id': user_id,
         'access_token':access_token,
         'refresh_token': refresh_token,
-        'perms': perms})
+        'perms': perms,
+        })
 
     # TODO if time: Now you can delete authz_permission containing authz_token
 
     return access_token, refresh_token, availability_period
+
+def execute_rimdx_client(user_id, action, resource, access_token):
+    user_to_retrieve = [user for user in users if user['user_id'] == user_id][0]
+
+    # token is not associated with user_id
+    if user_to_retrieve["access_token"] != access_token:
+        if access_token == None:
+            print("DENY (<action>,<resource>,,0)")
+        else:
+            print("DENY (<action>,<resource>,<access_token>,<access_token.availability_period>)")
+
+        return "PERMISSION_DENIED"
+    
+    if user_to_retrieve["access_token"].availability_period == 0:
+        # check for auto-refresh
+        if user_to_retrieve["refresh_token"] != None:
+            new_authz_token = request_authorization(user_id, 1)
+            new_access_token, new_refresh_token, availability_period = request_access_token(user_id, new_authz_token, 1)
+
+            user_to_retrieve["authz_token"] = new_authz_token
+            user_to_retrieve["access_token"] = new_access_token
+            user_to_retrieve["refresh_token"] = new_refresh_token
+
+        else:
+            print("DENY (<action>, <resource>,, 0)")
+            return "TOKEN_EXPIRED"
+
+    user_to_retrieve["access_token"].availability_period--
+
+    if resource not in resources.keys:
+        print("DENY (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
+        return "RESOURCE_NOT_FOUND"
+
+    if action not in user_to_retrieve["perms"]['permissions']:
+        print("DENY (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
+        return "OPERATION_NOT_PERMITTED"
+
+    
+    print("PERMIT (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
+
+    if user_to_retrieve["refresh_token"] != None:
+        return new_authz_token, new_access_token, new_refresh_token, availability_period, "PERMISSION_GRANTED"
+    else:
+        return None, None, None, "PERMISSION_GRANTED"
