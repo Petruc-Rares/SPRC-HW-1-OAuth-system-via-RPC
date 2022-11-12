@@ -32,14 +32,16 @@ char **users_known;
 int no_users_known;
 // users databes
 user_db *user_database;
-// authz tokens with associated permissions
-authz_token_permissions *authz_token_permissions_list;
 // approvals
 approvals *list_approvals;
 int no_approvals;
 int crt_approval_no;
 
 int no_operations_per_token = 0;
+
+// authz tokens with associated permissions
+authz_token_permissions *authz_token_permissions_list;
+int no_authz_token_permissions_list = 0;
 
 static void
 chekprog_1(struct svc_req *rqstp, register SVCXPRT *transp)
@@ -202,6 +204,10 @@ void read_approvals(char *filename_approvals) {
 			
 			memcpy(list_approvals[no_approvals].list_permissions_val[crt_it].resource, resource, strlen(resource));
 			
+			if (permissions[strlen(permissions) - 1] == '\n') {
+				permissions[strlen(permissions) - 1] = '\0';
+			}
+
 			list_approvals[no_approvals].list_permissions_val[crt_it].permissions = (char *) calloc(strlen(permissions) + 1, sizeof(char));
 			if (!list_approvals[no_approvals].list_permissions_val[crt_it].permissions) {
 				printf("failed allocating permissions in approval\n");
@@ -236,13 +242,11 @@ void read_approvals(char *filename_approvals) {
 	*/
 }
 
-
 void read_input(char *filename_clients, char *filename_resources, char *filename_approvals) {
 	read_known_users(filename_clients);
 	read_resources(filename_resources);
 	read_approvals(filename_approvals);
 }
-
 
 int
 main (int argc, char **argv)
@@ -255,7 +259,7 @@ main (int argc, char **argv)
 	read_input(argv[1], argv[2], argv[3]);
 	no_operations_per_token = atoi(argv[4]);
 
-	printf("%d\n", no_operations_per_token);
+	authz_token_permissions_list = (authz_token_permissions *) calloc(1, sizeof(authz_token_permissions));
 
 	register SVCXPRT *transp;
 

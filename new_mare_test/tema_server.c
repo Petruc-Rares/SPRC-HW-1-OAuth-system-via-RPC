@@ -7,6 +7,9 @@
 #include "tema.h"
 #include "token.h"
 
+#define SIZE_USER_ID 15
+
+// available resources on server
 extern char **resources_db;
 extern int no_resources;
 // users known by server
@@ -14,17 +17,22 @@ extern char **users_known;
 extern int no_users_known;
 // users databes
 extern user_db *user_database;
+// approvals
+extern approvals *list_approvals;
+extern int no_approvals;
+extern int crt_approval_no;
+
+extern int no_operations_per_token;
+
 // authz tokens with associated permissions
 extern authz_token_permissions *authz_token_permissions_list;
+extern int no_authz_token_permissions_list;
 
 token *
 request_authorization_1_svc(request_authorization_param *argp, struct svc_req *rqstp)
 {
 	static token  result;
 
-	/*
-	 * insert server code here
-	 */
 	char *user_id = argp->user_id;
 	int auto_refresh = argp->auto_refresh;
 
@@ -53,7 +61,7 @@ request_authorization_1_svc(request_authorization_param *argp, struct svc_req *r
 		result.token_value = generate_access_token(user_id);
 		result.no_available_operations = 0;
 	}
-	
+
 	return &result;
 }
 
@@ -62,9 +70,38 @@ approve_request_token_1_svc(token *argp, struct svc_req *rqstp)
 {
 	static approve_request_token_response  result;
 
+	memcpy(&result.authz_token, argp, sizeof(token));
+
+	int no_rs = list_approvals[crt_approval_no].no_resources_w_permissions;
+
 	/*
-	 * insert server code here
-	 */
+	for (int i = 0; i < no_rs; i++) {
+		printf("%s on %s\n", list_approvals[crt_approval_no].list_permissions_val[i].permissions, list_approvals[crt_approval_no].list_permissions_val[i].resource);
+	}
+	*/
+
+	if ((strncmp(list_approvals[crt_approval_no].list_permissions_val[0].resource, "*", 1) == 0) &&
+		(strncmp(list_approvals[crt_approval_no].list_permissions_val[0].permissions, "-", 1) == 0)) {
+		result.authz_token.user_signed = 0;
+	} else {
+		result.authz_token.user_signed = 1;
+	}
+
+
+	authz_token_permissions_list = (authz_token_permissions*) realloc(authz_token_permissions_list, (no_authz_token_permissions_list + 1) * sizeof(authz_token_permissions));
+	
+	authz_token_permissions_list[no_authz_token_permissions_list].authz_token.token_value = malloc(SIZE_USER_ID * sizeof(char));
+
+	strcpy(authz_token_permissions_list[no_authz_token_permissions_list].authz_token.token_value, argp->token_value);
+	authz_token_permissions_list[no_authz_token_permissions_list].list_permissions_val = list_approvals[crt_approval_no].list_permissions_val;
+	authz_token_permissions_list[no_authz_token_permissions_list].list_permissions_len = list_approvals[crt_approval_no].no_resources_w_permissions;
+
+	result.list_permissions.list_permissions_len =  list_approvals[crt_approval_no].no_resources_w_permissions;
+	result.list_permissions.list_permissions_val = list_approvals[crt_approval_no].list_permissions_val;
+
+	no_authz_token_permissions_list++;
+	crt_approval_no++;
+	
 
 	return &result;
 }
@@ -72,12 +109,39 @@ approve_request_token_1_svc(token *argp, struct svc_req *rqstp)
 request_access_token_response *
 request_access_token_1_svc(request_access_token_param *argp, struct svc_req *rqstp)
 {
+	printf("  RequestToken = %s\n", argp->authz_token.token_value);
+
 	static request_access_token_response  result;
 
-	/*
-	 * insert server code here
-	 */
+	if (argp->authz_token.user_signed == 0) {
+		result.fail = 0;
+		return &result;
+	}
 
+	result.fail = 1;
+
+	result.access_token.token_value = generate_access_token(argp->authz_token.token_value);
+	printf("  AccessToken = %s\n", result.access_token.token_value);
+
+	result.refresh_token.token_value = "INVALID_VALUE";
+
+	if (argp->auto_refresh) {
+		result.refresh_token.token_value = generate_access_token(result.access_token.token_value);
+		printf("  RefreshToken = %s\n", result.refresh_token.token_value);
+	}
+
+
+	//printf("1st value: %s\n", authz_token_permissions_list[0].authz_token.token_value);
+	for (int i = 0; i < no_authz_token_permissions_list; i++) {
+
+	if (strcmp(authz_token_permissions_list[i].authz_token.token_value, argp->authz_token.token_value) == 0) {
+	 		printf("are %d permisiuni\n", authz_token_permissions_list[i].list_permissions_len);
+	 		break;
+	 	}
+	}
+
+	// TODO - fill user_db
+	
 	return &result;
 }
 

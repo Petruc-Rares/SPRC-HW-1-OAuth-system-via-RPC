@@ -2,6 +2,7 @@
 struct token{
     string token_value<>;
     int no_available_operations;
+    int user_signed;
 };
 
 /* contains resource with its associated permissions */
@@ -27,14 +28,14 @@ struct request_authorization_param {
 struct request_access_token_param {
     string user_id<>;
     token authz_token;
-    token auto_refresh;
+    int auto_refresh;
 };
 
 /* return type for request_access_token procedure */
 struct request_access_token_response {
     token access_token;
     token refresh_token;
-    int availability_period;
+    int fail;
 };
 
 /* parameter in validate_delegated_action procedure */

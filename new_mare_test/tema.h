@@ -17,6 +17,7 @@ extern "C" {
 struct token {
 	char *token_value;
 	int no_available_operations;
+	int user_signed;
 };
 typedef struct token token;
 
@@ -44,14 +45,14 @@ typedef struct request_authorization_param request_authorization_param;
 struct request_access_token_param {
 	char *user_id;
 	token authz_token;
-	token auto_refresh;
+	int auto_refresh;
 };
 typedef struct request_access_token_param request_access_token_param;
 
 struct request_access_token_response {
 	token access_token;
 	token refresh_token;
-	int availability_period;
+	int fail;
 };
 typedef struct request_access_token_response request_access_token_response;
 
@@ -82,6 +83,7 @@ typedef struct user_db {
 typedef struct authz_token_permissions {
 	token authz_token;
 	resource_permissions *list_permissions_val;
+	int list_permissions_len;
 } authz_token_permissions;
 
 typedef struct approvals {

@@ -22,12 +22,28 @@ request_access_token_response execute_request_client(char *user_id, int auto_ref
 
 	if (authz_token == NULL) {
 		printf("USER_NOT_FOUND\n");
-		memset(&response, 0, sizeof(response));
 		return response;
-	} else {
-		printf("%s\n", authz_token->token_value);
 	}
 
+	approve_request_token_response *response_approve_request = approve_request_token_1(authz_token, clnt);
+
+	/*
+	printf("token_value: %s, ", response_approve_request->authz_token.token_value);
+	printf("token_signed: %d\n",response_approve_request->authz_token.user_signed);
+
+	for (int i = 0; i < response_approve_request->list_permissions.list_permissions_len; i++) {
+		printf("%s, %s\n", response_approve_request->list_permissions.list_permissions_val[i].resource, response_approve_request->list_permissions.list_permissions_val[i].permissions);
+	}
+	printf("\n");
+	*/
+
+	request_access_token_param param_access_token;
+
+	param_access_token.authz_token = response_approve_request->authz_token;
+	param_access_token.auto_refresh = auto_refresh;
+	param_access_token.user_id = user_id;
+
+	request_access_token_1(&param_access_token, clnt);
 }
 
 void execute_operation_client(char *host, char *filename_operations) {
@@ -100,7 +116,6 @@ void execute_operation_client(char *host, char *filename_operations) {
 	#endif	 /* DEBUG */
 }
 
-
 int
 main (int argc, char *argv[])
 {
@@ -113,5 +128,5 @@ main (int argc, char *argv[])
 
 	host = argv[1];
 	execute_operation_client(host, argv[2]);
-exit (0);
+	exit (0);
 }

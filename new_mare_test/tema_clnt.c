@@ -56,6 +56,20 @@ request_access_token_1(request_access_token_param *argp, CLIENT *clnt)
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}
+	
+	if (clnt_res.fail == 0) {
+		printf("REQUEST_DENIED\n");
+		return NULL;
+	}
+	
+	printf("%s -> %s", argp->authz_token.token_value, clnt_res.access_token.token_value);
+
+	if (argp->auto_refresh) {
+		printf(",%s", clnt_res.refresh_token.token_value);
+	}
+
+	printf("\n");
+
 	return (&clnt_res);
 }
 

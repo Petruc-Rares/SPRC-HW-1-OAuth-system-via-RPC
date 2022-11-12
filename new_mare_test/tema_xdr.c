@@ -14,6 +14,8 @@ xdr_token (XDR *xdrs, token *objp)
 		 return FALSE;
 	 if (!xdr_int (xdrs, &objp->no_available_operations))
 		 return FALSE;
+	 if (!xdr_int (xdrs, &objp->user_signed))
+		 return FALSE;
 	return TRUE;
 }
 
@@ -63,7 +65,7 @@ xdr_request_access_token_param (XDR *xdrs, request_access_token_param *objp)
 		 return FALSE;
 	 if (!xdr_token (xdrs, &objp->authz_token))
 		 return FALSE;
-	 if (!xdr_token (xdrs, &objp->auto_refresh))
+	 if (!xdr_int (xdrs, &objp->auto_refresh))
 		 return FALSE;
 	return TRUE;
 }
@@ -77,7 +79,7 @@ xdr_request_access_token_response (XDR *xdrs, request_access_token_response *obj
 		 return FALSE;
 	 if (!xdr_token (xdrs, &objp->refresh_token))
 		 return FALSE;
-	 if (!xdr_int (xdrs, &objp->availability_period))
+	 if (!xdr_int (xdrs, &objp->fail))
 		 return FALSE;
 	return TRUE;
 }
