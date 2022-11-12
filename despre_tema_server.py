@@ -52,7 +52,7 @@ def approve_request_token(authz_token):
         'authz_token': authz_token,
         'perms': set_permissions})
 
-    return authz_token, set_permissions
+    return authz_token
 
 def request_access_token(user_id, authz_token, auto_refresh):
     if authz_token.signed == False:
@@ -83,17 +83,18 @@ def request_access_token(user_id, authz_token, auto_refresh):
 
     return access_token, refresh_token, availability_period
 
-def execute_rimdx_client(user_id, action, resource, access_token):
+def validate_delegated_action(user_id, action, resource, access_token):
     user_to_retrieve = [user for user in users if user['user_id'] == user_id][0]
 
-    # token is not associated with user_id
-    if user_to_retrieve["access_token"] != access_token:
+    # token is not associated with user_id in server
+    # or user not found
+    if user_to_retrieve["access_token"] != access_token or user_to_retrieve["access_token"] == None:
         if access_token == None:
             print("DENY (<action>,<resource>,,0)")
         else:
             print("DENY (<action>,<resource>,<access_token>,<access_token.availability_period>)")
 
-        return "PERMISSION_DENIED"
+        return None, None, None, 0, "PERMISSION_DENIED"
     
     if user_to_retrieve["access_token"].availability_period == 0:
         # check for auto-refresh
@@ -107,22 +108,19 @@ def execute_rimdx_client(user_id, action, resource, access_token):
 
         else:
             print("DENY (<action>, <resource>,, 0)")
-            return "TOKEN_EXPIRED"
+            return user_to_retrieve["authz_token"], user_to_retrieve["access_token"], user_to_retrieve["refresh_token"], 0, "TOKEN_EXPIRED"
 
     user_to_retrieve["access_token"].availability_period--
 
     if resource not in resources.keys:
         print("DENY (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
-        return "RESOURCE_NOT_FOUND"
+        return user_to_retrieve["authz_token"], user_to_retrieve["access_token"], user_to_retrieve["refresh_token"], user_to_retrieve["access_token"].availability_period,"RESOURCE_NOT_FOUND"
 
     if action not in user_to_retrieve["perms"]['permissions']:
         print("DENY (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
-        return "OPERATION_NOT_PERMITTED"
+        return user_to_retrieve["authz_token"], user_to_retrieve["access_token"], user_to_retrieve["refresh_token"], user_to_retrieve["access_token"].availability_period,"OPERATION_NOT_PERMITTED"
 
     
     print("PERMIT (<action>, <resource>, user_to_retrieve['access_token'], user_to_retrieve['access_token'].availability_period")
 
-    if user_to_retrieve["refresh_token"] != None:
-        return new_authz_token, new_access_token, new_refresh_token, availability_period, "PERMISSION_GRANTED"
-    else:
-        return None, None, None, "PERMISSION_GRANTED"
+    return user_to_retrieve["authz_token"], user_to_retrieve["access_token"], user_to_retrieve["refresh_token"], user_to_retrieve["access_token"].availability_period, "PERMISSION_GRANTED"

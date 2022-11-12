@@ -17,7 +17,7 @@ def approve_request_token(authz_token):
     # this function is useful just to call server and return result
     pass
 
-def request_access_token(user_id, authz_token, option):
+def request_access_token(user_id, authz_token, auto_refresh):
     # this function is useful to call server and return result
     access_token, refresh_token, availability_period = result_rpc_call
 
@@ -28,7 +28,7 @@ def request_access_token(user_id, authz_token, option):
     print("<authz_token> -> <access_token>")
 
     # if refresh token
-    if option == 1:       
+    if auto_refresh == 1:       
         print(",<refresh_token")
 
     return access_token, refresh_token, availability_period
@@ -49,19 +49,17 @@ def execute_request_client(user_id, auto_refresh):
     # now ask for access token
     return request_access_token(user_id, authz_token, auto_refresh)
 
-def execute_rimdx_client(user_id, action, resource, access_token):
-    new_authz_token, new_access_token, new_refresh_token, availability_period, response = response_rpc
-
+def validate_delegated_action(user_id, action, resource, access_token):
     user_to_retrieve = [user for user in users if user['user_id'] == user_id][0]
+    
+    useful_variable = 0
 
-    user_to_retrieve['access_token'].availability_period--
+    if user_to_retrieve['refresh_token'] != None and user_to_retrieve['access_token'].availability_period == 0:
+        useful_variable = 1
 
-    refresh_token = [user for user in users if user['user_id'] == user_id][0]['refresh_token']
+    user_to_retrieve['authz_token'], user_to_retrieve['access_token'], user_to_retrieve['refresh_token'], availability_period, response = response_rpc
 
-    if refresh_token != None:
-        user_to_retrieve['authz_token'] = new_authz_token
-        user_to_retrieve['access_token'] = new_access_token
-        user_to_retrieve['refresh_token'] = new_refresh_token
+    if useful_variable:
         print("<new_authz_token> -> <new_access_token>")
 
     print(response)
@@ -73,6 +71,9 @@ def execute_operation_client(user_id, operation, option):
     if operation == "REQUEST":
         access_token, refresh_token, availability_period = execute_request_client(user_id, option)
     
+        if access_token != None:
+            return
+
         users.append({
             'user_id': user_id,
             'access_token':access_token,
@@ -83,7 +84,7 @@ def execute_operation_client(user_id, operation, option):
     elif operation IN ("Read", "Insert", "Modify", "Delete", "Execute"):
         access_token = [user for user in users if user['user_id'] == user_id][0]['access_token']
         
-        execute_rimdx_client(user_id, operation, option, access_token)
+        validate_delegated_action(user_id, operation, option, access_token)
 
     else:
         pass
