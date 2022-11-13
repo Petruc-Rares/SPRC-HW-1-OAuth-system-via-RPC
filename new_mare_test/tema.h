@@ -74,10 +74,11 @@ struct validate_delegated_action_response {
 typedef struct validate_delegated_action_response validate_delegated_action_response;
 
 typedef struct user_db {
-	int user_id;
+	char *user_id;
 	token access_token;
 	token refresh_token;
 	resource_permissions *list_permissions_val;
+	int list_permissions_len;
 } user_db;
 // list of authz token with permissions associated
 typedef struct authz_token_permissions {

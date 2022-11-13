@@ -57,7 +57,7 @@ request_access_token_1(request_access_token_param *argp, CLIENT *clnt)
 		return (NULL);
 	}
 	
-	if (clnt_res.fail == 0) {
+	if (clnt_res.fail == 1) {
 		printf("REQUEST_DENIED\n");
 		return NULL;
 	}

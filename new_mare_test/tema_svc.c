@@ -32,6 +32,7 @@ char **users_known;
 int no_users_known;
 // users databes
 user_db *user_database;
+int size_database;
 // approvals
 approvals *list_approvals;
 int no_approvals;
@@ -182,7 +183,6 @@ void read_approvals(char *filename_approvals) {
 
 	list_approvals = (approvals *) calloc((no_approvals + 1), sizeof(approvals));
 
-
 	while (fgets(buf, BUFSIZE, fp)) {
 		list_approvals = (approvals *) realloc(list_approvals, (no_approvals + 1) * sizeof(approvals));
 		//printf("%s", buf);
@@ -260,6 +260,8 @@ main (int argc, char **argv)
 	no_operations_per_token = atoi(argv[4]);
 
 	authz_token_permissions_list = (authz_token_permissions *) calloc(1, sizeof(authz_token_permissions));
+	user_database = (user_db *) calloc(1, sizeof(user_db));
+
 
 	register SVCXPRT *transp;
 

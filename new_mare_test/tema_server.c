@@ -17,6 +17,7 @@ extern char **users_known;
 extern int no_users_known;
 // users databes
 extern user_db *user_database;
+extern int size_database;
 // approvals
 extern approvals *list_approvals;
 extern int no_approvals;
@@ -87,21 +88,32 @@ approve_request_token_1_svc(token *argp, struct svc_req *rqstp)
 		result.authz_token.user_signed = 1;
 	}
 
+	// there exists the chance that the authz_token already exists in the list so if that's the case
+	// just replace the permissions associated with it
+	int pos_to_add = no_authz_token_permissions_list;
 
-	authz_token_permissions_list = (authz_token_permissions*) realloc(authz_token_permissions_list, (no_authz_token_permissions_list + 1) * sizeof(authz_token_permissions));
-	
-	authz_token_permissions_list[no_authz_token_permissions_list].authz_token.token_value = malloc(SIZE_USER_ID * sizeof(char));
+	for (int i = 0; i < no_authz_token_permissions_list; i++) {
+		if (strncmp(argp->token_value, authz_token_permissions_list[i].authz_token.token_value, SIZE_USER_ID) == 0) {
+			pos_to_add = i;
+			break;
+		}	
+	}
 
-	strcpy(authz_token_permissions_list[no_authz_token_permissions_list].authz_token.token_value, argp->token_value);
-	authz_token_permissions_list[no_authz_token_permissions_list].list_permissions_val = list_approvals[crt_approval_no].list_permissions_val;
-	authz_token_permissions_list[no_authz_token_permissions_list].list_permissions_len = list_approvals[crt_approval_no].no_resources_w_permissions;
+	// no same authz_token found before
+	if (pos_to_add == no_authz_token_permissions_list) {
+		authz_token_permissions_list = (authz_token_permissions*) realloc(authz_token_permissions_list, (no_authz_token_permissions_list + 1) * sizeof(authz_token_permissions));
+		authz_token_permissions_list[no_authz_token_permissions_list].authz_token.token_value = calloc(SIZE_USER_ID + 1,sizeof(char));
+		strcpy(authz_token_permissions_list[pos_to_add].authz_token.token_value, argp->token_value);
+		no_authz_token_permissions_list++;
+	}
+
+	authz_token_permissions_list[pos_to_add].list_permissions_val = list_approvals[crt_approval_no].list_permissions_val;
+	authz_token_permissions_list[pos_to_add].list_permissions_len = list_approvals[crt_approval_no].no_resources_w_permissions;
 
 	result.list_permissions.list_permissions_len =  list_approvals[crt_approval_no].no_resources_w_permissions;
 	result.list_permissions.list_permissions_val = list_approvals[crt_approval_no].list_permissions_val;
 
-	no_authz_token_permissions_list++;
 	crt_approval_no++;
-	
 
 	return &result;
 }
@@ -114,13 +126,15 @@ request_access_token_1_svc(request_access_token_param *argp, struct svc_req *rqs
 	static request_access_token_response  result;
 
 	if (argp->authz_token.user_signed == 0) {
-		result.fail = 0;
+		result.fail = 1;
 		return &result;
 	}
 
-	result.fail = 1;
+	result.fail = 0;
 
 	result.access_token.token_value = generate_access_token(argp->authz_token.token_value);
+	printf("no_opeations_per_token in func: %d\n", no_operations_per_token);
+	result.access_token.no_available_operations = no_operations_per_token;
 	printf("  AccessToken = %s\n", result.access_token.token_value);
 
 	result.refresh_token.token_value = "INVALID_VALUE";
@@ -130,17 +144,54 @@ request_access_token_1_svc(request_access_token_param *argp, struct svc_req *rqs
 		printf("  RefreshToken = %s\n", result.refresh_token.token_value);
 	}
 
-
-	//printf("1st value: %s\n", authz_token_permissions_list[0].authz_token.token_value);
-	for (int i = 0; i < no_authz_token_permissions_list; i++) {
-
-	if (strcmp(authz_token_permissions_list[i].authz_token.token_value, argp->authz_token.token_value) == 0) {
-	 		printf("are %d permisiuni\n", authz_token_permissions_list[i].list_permissions_len);
-	 		break;
-	 	}
+	int user_exists = 0;
+	int position_to_add = size_database;
+	// check if user does not already exist in database and if it does, replace anything but user_id
+	for (int i = 0; i < size_database; i++) {
+		if (strncmp(user_database[i].user_id, argp->user_id, SIZE_USER_ID) == 0) {
+			user_exists = 1;
+			position_to_add = i;
+			break;
+		}
 	}
 
-	// TODO - fill user_db
+	if (user_exists == 0) {
+		user_database = realloc(user_database, (size_database + 1) * sizeof(user_db));
+		user_database[size_database].user_id = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+		user_database[size_database].access_token.token_value = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+		user_database[size_database].refresh_token.token_value = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+		strncpy(user_database[size_database].user_id, argp->user_id, SIZE_USER_ID);
+		size_database++;
+	}
+
+	strncpy(user_database[position_to_add].access_token.token_value, result.access_token.token_value, SIZE_USER_ID);
+	strncpy(user_database[position_to_add].refresh_token.token_value, result.refresh_token.token_value, SIZE_USER_ID);
+
+
+	for (int i = 0; i < no_authz_token_permissions_list; i++) {
+		if (strncmp(authz_token_permissions_list[i].authz_token.token_value,
+					argp->authz_token.token_value, SIZE_USER_ID) == 0) {
+			user_database[position_to_add].list_permissions_val = authz_token_permissions_list[i].list_permissions_val;
+			user_database[position_to_add].list_permissions_len = authz_token_permissions_list[i].list_permissions_len;
+			break;
+		}
+	}
+
+
+	/*
+	printf("USER DATABASE\n");
+	for (int i = 0; i < size_database; i++) {
+		printf("user_db[%d].user_id = %s\n", i, user_database[i].user_id);
+		printf("user_db[%d].access_token.token_value = %s\n", i, user_database[i].access_token.token_value);
+		printf("user_db[%d].refresh_token.token_value= %s\n", i, user_database[i].refresh_token.token_value);
+		printf("user_db[%d] are urmatoarele permisiuni:\n", i);
+
+		for (int j = 0; j < user_database[i].list_permissions_len; j++) {
+			printf("%s %s, ", user_database[i].list_permissions_val[j].resource, user_database[i].list_permissions_val[j].permissions);
+		}
+		printf("\n");
+	}
+	*/
 	
 	return &result;
 }
