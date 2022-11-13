@@ -61,19 +61,6 @@ request_access_token_1(request_access_token_param *argp, CLIENT *clnt)
 		return (NULL);
 	}
 
-	if (clnt_res.fail == 1) {
-		printf("REQUEST_DENIED\n");
-		return NULL;
-	}
-	
-	printf("%s -> %s", argp->authz_token.token_value, clnt_res.access_token.token_value);
-
-	if (argp->auto_refresh) {
-		printf(",%s", clnt_res.refresh_token.token_value);
-	}
-
-	printf("\n");
-
 	return (&clnt_res);
 }
 
@@ -114,6 +101,8 @@ validate_delegated_action_1(validate_delegated_action_param *argp, CLIENT *clnt)
 
 				request_access_token_param param_access_token;
 				param_access_token.authz_token = user_database[i].refresh_token;
+				// does no longer needs to be signed so mark as it is
+				param_access_token.authz_token.user_signed = 1;
 				param_access_token.auto_refresh = 1;
 				param_access_token.user_id = argp->user_id;
 				request_access_token_response *response = request_access_token_1(&param_access_token, clnt);
@@ -121,6 +110,9 @@ validate_delegated_action_1(validate_delegated_action_param *argp, CLIENT *clnt)
 				// update this data in users database
 				user_database[i].refresh_token = response->refresh_token;
 				user_database[i].access_token = response->access_token;
+
+				// also in argp
+				argp->access_token = response->access_token;
 			}
 		}		
 	}

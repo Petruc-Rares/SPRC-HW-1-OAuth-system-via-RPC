@@ -37,14 +37,22 @@ request_access_token_response execute_request_client(char *user_id, int auto_ref
 	param_access_token.user_id = user_id;
 
 
-	request_access_token_response *response_aux = request_access_token_1(&param_access_token, clnt);
+	response = *(request_access_token_1(&param_access_token, clnt));
 
-	if (response_aux == NULL) {
-		response.fail = 1;
+	if (response.fail == 1) {
+		printf("REQUEST_DENIED\n");
 		return response;
-	} else {
-		return *(response_aux);
 	}
+
+	printf("%s -> %s", response_approve_request->authz_token.token_value, response.access_token.token_value);
+
+	if (auto_refresh) {
+		printf(",%s", response.refresh_token.token_value);
+	}
+
+	printf("\n");
+
+	return response;
 }
 
 void execute_operation_client(char *host, char *filename_operations) {
@@ -163,8 +171,6 @@ void execute_operation_client(char *host, char *filename_operations) {
 			action_param.action = (char *) calloc(BUFSIZE, sizeof(char));
 			strncpy(action_param.resource, option, strlen(option));
 			strncpy(action_param.action, operation, strlen(operation));
-
-			action_param.access_token.no_available_operations = -1;
 
 			int i;
 			for (i = 0; i < size_database; i++) {
