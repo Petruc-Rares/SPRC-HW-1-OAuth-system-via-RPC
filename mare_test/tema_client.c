@@ -151,12 +151,7 @@ void execute_operation_client(char *host, char *filename_operations) {
 			
 
 			// printf("auto_refresh: %d\n", auto_refresh);
-		} else if ((strncmp(operation, "READ", strlen(operation)) == 0) ||
-				   (strncmp(operation, "INSERT", strlen(operation)) == 0) ||
-				   (strncmp(operation, "MODIFY", strlen(operation)) == 0) ||
-				   (strncmp(operation, "DELETE", strlen(operation)) == 0) ||
-				   (strncmp(operation, "EXECUTE", strlen(operation)) == 0)) {
-			
+		} else {
 			// option is the resource accesed so we let's remove the \n at the end of it
 			// for all rows read from client.in except the last one
 			if (option[strlen(option) - 1] == '\n') {
@@ -184,8 +179,6 @@ void execute_operation_client(char *host, char *filename_operations) {
 
 			if (i == size_database) continue;
 			user_database[i].access_token.no_available_operations--;
-		} else {
-			printf("UNDEFINED BEHAVIOR for operation: %s\n", operation);
 		}
 	}
 

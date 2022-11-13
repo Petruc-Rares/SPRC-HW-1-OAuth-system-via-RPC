@@ -248,6 +248,8 @@ void read_input(char *filename_clients, char *filename_resources, char *filename
 int
 main (int argc, char **argv)
 {
+	setvbuf(stdout, NULL, _IONBF, 0);
+
 	if (argc != 5) {
 		printf("Correct usage is: ./tema_server <fisier_clienti> <fisier_resurse> <fisier_aprobari> <valabiliate jetoane>\n");
 		exit(1);
