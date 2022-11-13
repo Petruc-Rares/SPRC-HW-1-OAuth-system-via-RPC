@@ -6,26 +6,44 @@
 
 #include "tema.h"
 
-#define BUFSIZE 100
-
 // used for reading data into it
 char buf[BUFSIZE];
 
+user_db *user_database;
+int size_database;
+
 request_access_token_response execute_request_client(char *user_id, int auto_refresh, CLIENT* clnt) {
 	request_access_token_response response;
+	response.fail = 0;
+	
 	request_authorization_param param;
 	
 	param.user_id = user_id;
-	param.auto_refresh = auto_refresh;
+	param.auto_refresh = 0;
 
 	token *authz_token = request_authorization_1(&param, clnt);
 
-
-	if (authz_token->no_available_operations == -1) {
+	if (authz_token == NULL) {
 		printf("USER_NOT_FOUND\n");
+		response.fail = 1;
+		return response;
+	}
+
+	approve_request_token_response *response_approve_request = approve_request_token_1(authz_token, clnt);
+
+	request_access_token_param param_access_token;
+	param_access_token.authz_token = response_approve_request->authz_token;
+	param_access_token.auto_refresh = auto_refresh;
+	param_access_token.user_id = user_id;
+
+
+	request_access_token_response *response_aux = request_access_token_1(&param_access_token, clnt);
+
+	if (response_aux == NULL) {
+		response.fail = 1;
 		return response;
 	} else {
-		printf("%s -> \n",authz_token->token_value);
+		return *(response_aux);
 	}
 }
 
@@ -74,7 +92,56 @@ void execute_operation_client(char *host, char *filename_operations) {
 			// options represents auto_refresh
 			int auto_refresh = atoi(option);
 
-			execute_request_client(user_id, auto_refresh, clnt);
+			request_access_token_response response_request = execute_request_client(user_id, auto_refresh, clnt);
+
+			if (response_request.fail) {
+				continue;
+			}
+
+
+			int user_exists = 0;
+			int position_to_add = size_database;
+			// check if user does not already exist in database and if it does, replace anything but user_id
+			for (int i = 0; i < size_database; i++) {
+				if (strncmp(user_database[i].user_id, user_id, SIZE_USER_ID) == 0) {
+					user_exists = 1;
+					position_to_add = i;
+					break;
+				}
+			}
+
+			if (user_exists == 0) {
+				user_database = realloc(user_database, (size_database + 1) * sizeof(user_db));
+				user_database[size_database].user_id = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+				user_database[size_database].access_token.token_value = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+				user_database[size_database].refresh_token.token_value = (char *) calloc(SIZE_USER_ID + 1,sizeof(char));
+				strncpy(user_database[size_database].user_id, user_id, SIZE_USER_ID);
+				size_database++;
+			}
+
+
+			strncpy(user_database[position_to_add].access_token.token_value, response_request.access_token.token_value, SIZE_USER_ID);
+			user_database[position_to_add].access_token.no_available_operations = response_request.access_token.no_available_operations;
+			strncpy(user_database[position_to_add].refresh_token.token_value, response_request.refresh_token.token_value, SIZE_USER_ID);
+
+
+			// permissions doesn't really matter as the pdf mentions
+			//  întoarce un jeton de acces la resurse, un jeton pentru regenerarea celui de acces si
+			// o perioadă de valabilitate a acestora.
+
+			user_database[position_to_add].list_permissions_val = NULL;
+			user_database[position_to_add].list_permissions_len = 0;
+
+			/*
+			for (int i = 0; i < size_database; i++) {
+				printf("user[%d].access_token.user_id: %s\n", i, user_database[i].user_id);
+				printf("user[%d].access_token.token_value: %s\n", i, user_database[i].access_token.token_value);
+				printf("user[%d].access_token.token_value.no_available_ops: %d\n", i, user_database[i].access_token.no_available_operations);
+				printf("user[%d].refresh_token.token_value: %s\n", i, user_database[i].refresh_token.token_value);
+			}
+			*/
+			
+
 			// printf("auto_refresh: %d\n", auto_refresh);
 		} else if ((strncmp(operation, "READ", strlen(operation)) == 0) ||
 				   (strncmp(operation, "INSERT", strlen(operation)) == 0) ||
@@ -88,7 +155,29 @@ void execute_operation_client(char *host, char *filename_operations) {
 				option[strlen(option) - 1] = '\0';
 			}
 
-			// printf("option: %s\n", option);
+			validate_delegated_action_param action_param;
+
+			action_param.user_id = (char *) calloc(SIZE_USER_ID + 1, sizeof(char));
+			strncpy(action_param.user_id, user_id, SIZE_USER_ID);
+			action_param.resource = (char *) calloc(BUFSIZE, sizeof(char));
+			action_param.action = (char *) calloc(BUFSIZE, sizeof(char));
+			strncpy(action_param.resource, option, strlen(option));
+			strncpy(action_param.action, operation, strlen(operation));
+
+			action_param.access_token.no_available_operations = -1;
+
+			int i;
+			for (i = 0; i < size_database; i++) {
+				if (strncmp(user_database[i].user_id, user_id, SIZE_USER_ID) == 0) {
+					action_param.access_token = user_database[i].access_token;
+					break;
+				}
+			}
+
+			validate_delegated_action_1(&action_param, clnt);
+
+			if (i == size_database) continue;
+			user_database[i].access_token.no_available_operations--;
 		} else {
 			printf("UNDEFINED BEHAVIOR for operation: %s\n", operation);
 		}
@@ -104,13 +193,15 @@ int
 main (int argc, char *argv[])
 {
 	char *host;
+	user_database = (user_db *) calloc(1, sizeof(user_db));
 
 	if (argc !=  3) {
 		printf ("usage: %s server_host <fisier_operatii> \n", argv[0]);
 		exit (1);
 	}
 
+
 	host = argv[1];
 	execute_operation_client(host, argv[2]);
-exit (0);
+	exit (0);
 }

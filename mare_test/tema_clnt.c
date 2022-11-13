@@ -9,6 +9,9 @@
 /* Default timeout can be changed using clnt_control() */
 static struct timeval TIMEOUT = { 25, 0 };
 
+extern user_db *user_database;
+extern int size_database;
+
 token *
 request_authorization_1(request_authorization_param *argp, CLIENT *clnt)
 {
@@ -21,6 +24,12 @@ request_authorization_1(request_authorization_param *argp, CLIENT *clnt)
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}
+
+
+	if (clnt_res.no_available_operations == -1) {
+		return NULL;
+	}
+
 	return (&clnt_res);
 }
 
@@ -51,20 +60,81 @@ request_access_token_1(request_access_token_param *argp, CLIENT *clnt)
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}
+
+	if (clnt_res.fail == 1) {
+		printf("REQUEST_DENIED\n");
+		return NULL;
+	}
+	
+	printf("%s -> %s", argp->authz_token.token_value, clnt_res.access_token.token_value);
+
+	if (argp->auto_refresh) {
+		printf(",%s", clnt_res.refresh_token.token_value);
+	}
+
+	printf("\n");
+
 	return (&clnt_res);
 }
 
-validate_delegated_action_response *
+char **
 validate_delegated_action_1(validate_delegated_action_param *argp, CLIENT *clnt)
 {
-	static validate_delegated_action_response clnt_res;
+	static char *clnt_res;
+
+/*
+	printf("user_id: %s\n", argp->user_id);
+	if (argp->access_token.no_available_operations != -1) {
+		printf("acces_token_value: %s\n", argp->access_token.token_value);
+	} else {
+		printf("Just trying my luck\n");
+	}
+	printf("action: %s\n", argp->action);
+	printf("resource: %s\n", argp->resource);
+	*/
+
+	// check if he has left operations with the current access token
+	if (argp->access_token.no_available_operations == 0) {
+		int i;
+
+		for (i = 0; i < size_database; i++) {
+			if (strncmp(user_database[i].user_id, argp->user_id, SIZE_USER_ID) == 0) {
+				break;
+			}
+		}
+
+		// user found in database
+		if (i != size_database) {
+			// check if he has refresh token active 
+			if (strncmp(user_database[i].refresh_token.token_value, "INVALID_VALUE", SIZE_USER_ID) != 0) {
+				request_authorization_param param;
+	
+				param.user_id = argp->user_id;
+				param.auto_refresh = 1;
+
+				request_access_token_param param_access_token;
+				param_access_token.authz_token = user_database[i].refresh_token;
+				param_access_token.auto_refresh = 1;
+				param_access_token.user_id = argp->user_id;
+				request_access_token_response *response = request_access_token_1(&param_access_token, clnt);
+
+				// update this data in users database
+				user_database[i].refresh_token = response->refresh_token;
+				user_database[i].access_token = response->access_token;
+			}
+		}		
+	}
 
 	memset((char *)&clnt_res, 0, sizeof(clnt_res));
 	if (clnt_call (clnt, validate_delegated_action,
 		(xdrproc_t) xdr_validate_delegated_action_param, (caddr_t) argp,
-		(xdrproc_t) xdr_validate_delegated_action_response, (caddr_t) &clnt_res,
+		(xdrproc_t) xdr_wrapstring, (caddr_t) &clnt_res,
 		TIMEOUT) != RPC_SUCCESS) {
 		return (NULL);
 	}
+
+	printf("%s\n", clnt_res);
+	//printf("%s\n", *clnt_res);
+
 	return (&clnt_res);
 }

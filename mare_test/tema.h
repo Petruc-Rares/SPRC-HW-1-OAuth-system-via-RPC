@@ -13,10 +13,13 @@
 extern "C" {
 #endif
 
+#define BUFSIZE 100
+#define SIZE_USER_ID 15
 
 struct token {
 	char *token_value;
 	int no_available_operations;
+	int user_signed;
 };
 typedef struct token token;
 
@@ -44,14 +47,14 @@ typedef struct request_authorization_param request_authorization_param;
 struct request_access_token_param {
 	char *user_id;
 	token authz_token;
-	token auto_refresh;
+	int auto_refresh;
 };
 typedef struct request_access_token_param request_access_token_param;
 
 struct request_access_token_response {
 	token access_token;
 	token refresh_token;
-	int availability_period;
+	int fail;
 };
 typedef struct request_access_token_response request_access_token_response;
 
@@ -63,25 +66,18 @@ struct validate_delegated_action_param {
 };
 typedef struct validate_delegated_action_param validate_delegated_action_param;
 
-struct validate_delegated_action_response {
-	token authz_token;
-	token access_token;
-	token refresh_token;
-	int availability_period;
-	char *response;
-};
-typedef struct validate_delegated_action_response validate_delegated_action_response;
-
 typedef struct user_db {
-	int user_id;
+	char *user_id;
 	token access_token;
 	token refresh_token;
 	resource_permissions *list_permissions_val;
+	int list_permissions_len;
 } user_db;
 // list of authz token with permissions associated
 typedef struct authz_token_permissions {
 	token authz_token;
 	resource_permissions *list_permissions_val;
+	int list_permissions_len;
 } authz_token_permissions;
 
 typedef struct approvals {
@@ -103,8 +99,8 @@ extern  approve_request_token_response * approve_request_token_1_svc(token *, st
 extern  request_access_token_response * request_access_token_1(request_access_token_param *, CLIENT *);
 extern  request_access_token_response * request_access_token_1_svc(request_access_token_param *, struct svc_req *);
 #define validate_delegated_action 4
-extern  validate_delegated_action_response * validate_delegated_action_1(validate_delegated_action_param *, CLIENT *);
-extern  validate_delegated_action_response * validate_delegated_action_1_svc(validate_delegated_action_param *, struct svc_req *);
+extern  char ** validate_delegated_action_1(validate_delegated_action_param *, CLIENT *);
+extern  char ** validate_delegated_action_1_svc(validate_delegated_action_param *, struct svc_req *);
 extern int chekprog_1_freeresult (SVCXPRT *, xdrproc_t, caddr_t);
 
 #else /* K&R C */
@@ -118,8 +114,8 @@ extern  approve_request_token_response * approve_request_token_1_svc();
 extern  request_access_token_response * request_access_token_1();
 extern  request_access_token_response * request_access_token_1_svc();
 #define validate_delegated_action 4
-extern  validate_delegated_action_response * validate_delegated_action_1();
-extern  validate_delegated_action_response * validate_delegated_action_1_svc();
+extern  char ** validate_delegated_action_1();
+extern  char ** validate_delegated_action_1_svc();
 extern int chekprog_1_freeresult ();
 #endif /* K&R C */
 
@@ -133,7 +129,6 @@ extern  bool_t xdr_request_authorization_param (XDR *, request_authorization_par
 extern  bool_t xdr_request_access_token_param (XDR *, request_access_token_param*);
 extern  bool_t xdr_request_access_token_response (XDR *, request_access_token_response*);
 extern  bool_t xdr_validate_delegated_action_param (XDR *, validate_delegated_action_param*);
-extern  bool_t xdr_validate_delegated_action_response (XDR *, validate_delegated_action_response*);
 
 #else /* K&R C */
 extern bool_t xdr_token ();
@@ -143,7 +138,6 @@ extern bool_t xdr_request_authorization_param ();
 extern bool_t xdr_request_access_token_param ();
 extern bool_t xdr_request_access_token_response ();
 extern bool_t xdr_validate_delegated_action_param ();
-extern bool_t xdr_validate_delegated_action_response ();
 
 #endif /* K&R C */
 
